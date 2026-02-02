@@ -95,7 +95,38 @@ function render(timeMs) {
   resizeCanvasToDisplaySize(canvas, gl);
 
   const t = timeMs * 0.001;
+  const deltaSeconds = Math.min(0.05, (timeMs - lastTimeMs) * 0.001);
+  lastTimeMs = timeMs;
   const aspect = canvas.width / canvas.height;
+
+  const forwardX = Math.sin(camera.yaw);
+  const forwardZ = -Math.cos(camera.yaw);
+  const rightX = Math.cos(camera.yaw);
+  const rightZ = Math.sin(camera.yaw);
+  const movement = moveSpeed * deltaSeconds;
+
+  if (pressedKeys.has("KeyW") || pressedKeys.has("ArrowUp")) {
+    camera.target.x += forwardX * movement;
+    camera.target.z += forwardZ * movement;
+  }
+  if (pressedKeys.has("KeyS") || pressedKeys.has("ArrowDown")) {
+    camera.target.x -= forwardX * movement;
+    camera.target.z -= forwardZ * movement;
+  }
+  if (pressedKeys.has("KeyA") || pressedKeys.has("ArrowLeft")) {
+    camera.target.x -= rightX * movement;
+    camera.target.z -= rightZ * movement;
+  }
+  if (pressedKeys.has("KeyD") || pressedKeys.has("ArrowRight")) {
+    camera.target.x += rightX * movement;
+    camera.target.z += rightZ * movement;
+  }
+  if (pressedKeys.has("KeyQ")) {
+    camera.target.y += movement;
+  }
+  if (pressedKeys.has("KeyE")) {
+    camera.target.y -= movement;
+  }
 
   const proj = mat4Perspective(Math.PI / 4, aspect, 0.1, 100);
   const viewTranslate = mat4Translate(0, 0, -camera.distance);
