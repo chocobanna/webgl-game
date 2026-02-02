@@ -39,8 +39,7 @@ const uMVP = gl.getUniformLocation(program, "u_mvp");
 const camera = {
   yaw: 0,
   pitch: 0,
-  distance: 6,
-  target: { x: 0, y: 0, z: 0 }
+  distance: 6
 };
 
 let isDragging = false;
@@ -48,21 +47,11 @@ let lastX = 0;
 let lastY = 0;
 const rotateSpeed = 0.005;
 const zoomSpeed = 0.0015;
-const moveSpeed = 4;
 const minDistance = 2.5;
 const maxDistance = 20;
 const maxPitch = Math.PI / 2 - 0.01;
 
 canvas.style.touchAction = "none";
-
-const pressedKeys = new Set();
-window.addEventListener("keydown", (event) => {
-  pressedKeys.add(event.code);
-});
-
-window.addEventListener("keyup", (event) => {
-  pressedKeys.delete(event.code);
-});
 
 canvas.addEventListener("pointerdown", (event) => {
   isDragging = true;
@@ -101,8 +90,6 @@ canvas.addEventListener("wheel", (event) => {
   camera.distance += event.deltaY * zoomSpeed;
   camera.distance = Math.max(minDistance, Math.min(maxDistance, camera.distance));
 }, { passive: false });
-
-let lastTimeMs = 0;
 
 function render(timeMs) {
   resizeCanvasToDisplaySize(canvas, gl);
@@ -145,11 +132,7 @@ function render(timeMs) {
   const viewTranslate = mat4Translate(0, 0, -camera.distance);
   const viewRotX = mat4RotateX(camera.pitch);
   const viewRotY = mat4RotateY(camera.yaw);
-  const viewCenter = mat4Translate(-camera.target.x, -camera.target.y, -camera.target.z);
-  const view = mat4Multiply(
-    viewRotY,
-    mat4Multiply(viewRotX, mat4Multiply(viewTranslate, viewCenter))
-  );
+  const view = mat4Multiply(viewRotY, mat4Multiply(viewRotX, viewTranslate));
   const rotY = mat4RotateY(t);
   const rotX = mat4RotateX(t * 0.7);
 
