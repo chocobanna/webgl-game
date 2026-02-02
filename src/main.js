@@ -1,14 +1,14 @@
-import { createGL, resizeCanvasToDisplaySize, createProgram } from "./gl-utils.js";
-import { vsSource, fsSource } from "./shaders.js";
-import { createCubeMesh } from "./cube.js";
-import { loadTexture2D } from "./texture.js";
+import { createGL, resizeCanvasToDisplaySize, createProgram } from "./core/gl-utils.js";
+import { vsSource, fsSource } from "./render/shaders.js";
+import { createCubeMesh } from "./geometry/cube.js";
+import { loadTexture2D } from "./core/texture.js";
 import {
   mat4Multiply,
   mat4Perspective,
   mat4Translate,
   mat4RotateX,
   mat4RotateY
-} from "./math.js";
+} from "./math/mat4.js";
 
 const canvas = document.getElementById("c");
 const gl = createGL(canvas);
@@ -27,7 +27,7 @@ const cube = createCubeMesh(gl, program);
 cube.bind();
 
 // Texture
-const tex = loadTexture2D(gl, "./crate.png");
+const tex = loadTexture2D(gl, "../assets/textures/crate.png");
 const uTex = gl.getUniformLocation(program, "u_tex");
 gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D, tex);
