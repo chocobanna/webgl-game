@@ -1,13 +1,13 @@
 export const vsSource = `
   attribute vec3 a_position;
-  attribute vec3 a_color;
+  attribute vec2 a_uv;
 
   uniform mat4 u_mvp;
 
-  varying vec3 v_color;
+  varying vec2 v_uv;
 
   void main() {
-    v_color = a_color;
+    v_uv = a_uv;
     gl_Position = u_mvp * vec4(a_position, 1.0);
   }
 `;
@@ -15,9 +15,11 @@ export const vsSource = `
 export const fsSource = `
   precision mediump float;
 
-  varying vec3 v_color;
+  varying vec2 v_uv;
+
+  uniform sampler2D u_tex;
 
   void main() {
-    gl_FragColor = vec4(v_color, 1.0);
+    gl_FragColor = texture2D(u_tex, v_uv);
   }
 `;
