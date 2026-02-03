@@ -62,10 +62,16 @@ export function createOrbitCamera(canvas, options = {}) {
   canvas.addEventListener("contextmenu", e => e.preventDefault());
 
   canvas.addEventListener("pointerdown", (e) => {
+    // Kill right mouse button behavior entirely.
+    if (e.button === 2) return;
+
     isDragging = true;
     lastX = e.clientX;
     lastY = e.clientY;
-    dragMode = (e.button === 2 || e.shiftKey) ? "pan" : "orbit";
+
+    // Pan ONLY when Shift is held (left mouse + Shift).
+    dragMode = e.shiftKey ? "pan" : "orbit";
+
     canvas.setPointerCapture(e.pointerId);
   });
 
@@ -113,10 +119,11 @@ export function createOrbitCamera(canvas, options = {}) {
     camera.target.z += uz * dy * scale;
   });
 
-  canvas.addEventListener("pointerup",   () => isDragging = false);
-  canvas.addEventListener("pointerleave",() => isDragging = false);
-  canvas.addEventListener("pointercancel",() => isDragging = false);
+  canvas.addEventListener("pointerup", () => isDragging = false);
+  canvas.addEventListener("pointerleave", () => isDragging = false);
+  canvas.addEventListener("pointercancel", () => isDragging = false);
 
+  // Keep zoom on scroll wheel (this is NOT what you wanted removed).
   canvas.addEventListener("wheel", (e) => {
     e.preventDefault();
     camera.distance += e.deltaY * zoomSpeed;
