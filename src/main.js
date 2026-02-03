@@ -2,10 +2,10 @@ import { createGL, resizeCanvasToDisplaySize, createProgram } from "./core/gl-ut
 import { vsSource, fsSource } from "./render/shaders.js";
 import { createCubeMesh } from "./geometry/cube.js";
 import { loadTexture2D } from "./core/texture.js";
+import { createOrbitCamera } from "./scene/camera.js";
 import {
   mat4Multiply,
   mat4Perspective,
-  mat4Translate,
   mat4RotateX,
   mat4RotateY
 } from "./math/mat4.js";
@@ -36,60 +36,8 @@ gl.uniform1i(uTex, 0);
 // Uniforms
 const uMVP = gl.getUniformLocation(program, "u_mvp");
 
-const camera = {
-  yaw: 0,
-  pitch: 0,
-  distance: 6
-};
-
-let isDragging = false;
-let lastX = 0;
-let lastY = 0;
-const rotateSpeed = 0.005;
-const zoomSpeed = 0.0015;
-const minDistance = 2.5;
-const maxDistance = 20;
-const maxPitch = Math.PI / 2 - 0.01;
-
-canvas.style.touchAction = "none";
-
-canvas.addEventListener("pointerdown", (event) => {
-  isDragging = true;
-  lastX = event.clientX;
-  lastY = event.clientY;
-  canvas.setPointerCapture(event.pointerId);
-});
-
-canvas.addEventListener("pointermove", (event) => {
-  if (!isDragging) return;
-  const dx = event.clientX - lastX;
-  const dy = event.clientY - lastY;
-  lastX = event.clientX;
-  lastY = event.clientY;
-
-  camera.yaw += dx * rotateSpeed;
-  camera.pitch += dy * rotateSpeed;
-  camera.pitch = Math.max(-maxPitch, Math.min(maxPitch, camera.pitch));
-});
-
-canvas.addEventListener("pointerup", (event) => {
-  isDragging = false;
-  canvas.releasePointerCapture(event.pointerId);
-});
-
-canvas.addEventListener("pointercancel", () => {
-  isDragging = false;
-});
-
-canvas.addEventListener("pointerleave", () => {
-  isDragging = false;
-});
-
-canvas.addEventListener("wheel", (event) => {
-  event.preventDefault();
-  camera.distance += event.deltaY * zoomSpeed;
-  camera.distance = Math.max(minDistance, Math.min(maxDistance, camera.distance));
-}, { passive: false });
+// Camera (orbit + pan + zoom handled inside camera.js)
+const orbit = createOrbitCamera(canvas);
 
 function render(timeMs) {
   resizeCanvasToDisplaySize(canvas, gl);
@@ -98,14 +46,13 @@ function render(timeMs) {
   const aspect = canvas.width / canvas.height;
 
   const proj = mat4Perspective(Math.PI / 4, aspect, 0.1, 100);
-  const viewTranslate = mat4Translate(0, 0, -camera.distance);
-  const viewRotX = mat4RotateX(camera.pitch);
-  const viewRotY = mat4RotateY(camera.yaw);
-  const view = mat4Multiply(viewRotY, mat4Multiply(viewRotX, viewTranslate));
+  const view = orbit.getViewMatrix();
+
+  // Spin the cube so you can tell the camera works
   const rotY = mat4RotateY(t);
   const rotX = mat4RotateX(t * 0.7);
-
   const model = mat4Multiply(rotY, rotX);
+
   const pv = mat4Multiply(proj, view);
   const mvp = mat4Multiply(pv, model);
 
