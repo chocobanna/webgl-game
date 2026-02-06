@@ -1,0 +1,4 @@
+Version 1.0
+-3d graphics
+-Texture conformity
+-Camera rotation (around a point)
