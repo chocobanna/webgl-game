@@ -2,6 +2,7 @@ import { GLContext } from "./GLContext.js";
 import { Time } from "./Time.js";
 import { setupResize } from "./Resize.js";
 import { Renderer } from "../gfx/Renderer.js";
+import { Input } from "./Input.js";
 
 export class Engine {
   constructor(canvas) {
@@ -11,6 +12,7 @@ export class Engine {
     this.ctx = new GLContext(canvas);
     this.gl = null;
     this.renderer = null;
+    this.input = null;
 
     this._running = false;
     this._frame = this._frame.bind(this);
@@ -23,6 +25,7 @@ export class Engine {
   async init() {
     this.gl = this.ctx.create();
     this.renderer = new Renderer(this.gl);
+    this.input = new Input(window);
 
     setupResize(this.canvas, this.gl, () => {
       if (this.scene?.camera) this.scene.camera.setAspect(this.aspect);
@@ -49,10 +52,8 @@ export class Engine {
 
     this.time.update(nowMs);
 
-    // Update step
     this.scene.update(this.time.dt);
 
-    // Render step
     this.renderer.render(this.scene);
 
     requestAnimationFrame(this._frame);

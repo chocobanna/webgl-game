@@ -7,7 +7,15 @@ export class Scene {
   }
 
   update(dt) {
+    // Camera controller (if present)
+    if (this.camera?.controller) {
+      this.camera.controller.update(this.camera, dt);
+    }
+
+    // Update transforms
     this.root.updateWorldMatrix(null);
+
+    // Update behaviors
     this.root.traverse((n) => n.update?.(dt));
   }
 }

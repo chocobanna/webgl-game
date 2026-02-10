@@ -5,15 +5,16 @@ export class Mat4 {
     return m;
   }
 
+  // Column-major multiplication consistent with WebGL expectations
   static mul(a, b) {
     const o = new Float32Array(16);
-    for (let r = 0; r < 4; r++) {
-      for (let c = 0; c < 4; c++) {
-        o[c + r * 4] =
-          a[0 + r * 4] * b[c + 0 * 4] +
-          a[1 + r * 4] * b[c + 1 * 4] +
-          a[2 + r * 4] * b[c + 2 * 4] +
-          a[3 + r * 4] * b[c + 3 * 4];
+    for (let c = 0; c < 4; c++) {
+      for (let r = 0; r < 4; r++) {
+        o[c * 4 + r] =
+          a[0 * 4 + r] * b[c * 4 + 0] +
+          a[1 * 4 + r] * b[c * 4 + 1] +
+          a[2 * 4 + r] * b[c * 4 + 2] +
+          a[3 * 4 + r] * b[c * 4 + 3];
       }
     }
     return o;
@@ -33,11 +34,27 @@ export class Mat4 {
     return Mat4.mul(m, s);
   }
 
+  static rotateX(m, rad) {
+    const c = Math.cos(rad), s = Math.sin(rad);
+    const r = Mat4.identity();
+    r[5] = c;  r[9]  = -s;
+    r[6] = s;  r[10] = c;
+    return Mat4.mul(m, r);
+  }
+
   static rotateY(m, rad) {
     const c = Math.cos(rad), s = Math.sin(rad);
     const r = Mat4.identity();
-    r[0] = c;  r[2] = s;
-    r[8] = -s; r[10] = c;
+    r[0] = c;  r[8] = -s;
+    r[2] = s;  r[10] = c;
+    return Mat4.mul(m, r);
+  }
+
+  static rotateZ(m, rad) {
+    const c = Math.cos(rad), s = Math.sin(rad);
+    const r = Mat4.identity();
+    r[0] = c;  r[4] = -s;
+    r[1] = s;  r[5] = c;
     return Mat4.mul(m, r);
   }
 
