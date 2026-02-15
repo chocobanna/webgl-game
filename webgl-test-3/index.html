@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Raw WebGL FPS</title>
+<style>
+body { margin:0; overflow:hidden; background:black; }
+canvas { display:block; }
+
+#square{
+  position:fixed;
+  left:50%;
+  top:50%;
+  width:80px;
+  height:80px;
+  transform:translate(-50%,-50%);
+  border:3px solid white;
+  pointer-events:none;
+}
+</style>
+</head>
+<body>
+<div id="square"></div>
+<canvas id="gl"></canvas>
+
+<script>
+const canvas = document.getElementById("gl");
+const gl = canvas.getContext("webgl");
+
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+gl.viewport(0,0,canvas.width,canvas.height);
+
+addEventListener("resize", ()=>{
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+  gl.viewport(0,0,canvas.width,canvas.height);
+});
+
+// ---------- shaders (directional lighting added) ----------
+const vs = `
+attribute vec3 pos;
+attribute vec3 normal;
+
+uniform mat4 proj;
+uniform mat4 view;
+
+varying vec3 vNormal;
+
+void main(){
+  vNormal = normal;
+  gl_Position = proj * view * vec4(pos,1.0);
+}`;
+
+const fs = `
+precision mediump float;
+
+varying vec3 vNormal;
+
+void main(){
+  vec3 lightDir = normalize(vec3(0.5,1.0,0.3));
+  float d = max(dot(normalize(vNormal), lightDir), 0.15);
+  vec3 color = vec3(0.4,0.7,1.0) * d;
+  gl_FragColor = vec4(color,1.0);
+}`;
+
+function compile(type, src){
+  const s = gl.createShader(type);
+  gl.shaderSource(s,src);
+  gl.compileShader(s);
+  return s;
+}
+
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER,vs));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER,fs));
+gl.linkProgram(prog);
+gl.useProgram(prog);
+
+// ---------- cube with normals ----------
+const cubeData = new Float32Array([
+ // pos            normal
+ -1,-1,-1, 0,0,-1,  1,-1,-1, 0,0,-1,  1,1,-1, 0,0,-1,
+ -1,-1,-1, 0,0,-1,  1,1,-1, 0,0,-1, -1,1,-1, 0,0,-1,
+
+ -1,-1,1, 0,0,1,  1,-1,1, 0,0,1,  1,1,1, 0,0,1,
+ -1,-1,1, 0,0,1,  1,1,1, 0,0,1, -1,1,1, 0,0,1,
+
+ -1,-1,-1, -1,0,0, -1,1,-1, -1,0,0, -1,1,1, -1,0,0,
+ -1,-1,-1, -1,0,0, -1,1,1, -1,0,0, -1,-1,1, -1,0,0,
+
+ 1,-1,-1, 1,0,0, 1,1,-1, 1,0,0, 1,1,1, 1,0,0,
+ 1,-1,-1, 1,0,0, 1,1,1, 1,0,0, 1,-1,1, 1,0,0,
+
+ -1,-1,-1, 0,-1,0, -1,-1,1, 0,-1,0, 1,-1,1, 0,-1,0,
+ -1,-1,-1, 0,-1,0, 1,-1,1, 0,-1,0, 1,-1,-1, 0,-1,0,
+
+ -1,1,-1, 0,1,0, -1,1,1, 0,1,0, 1,1,1, 0,1,0,
+ -1,1,-1, 0,1,0, 1,1,1, 0,1,0, 1,1,-1, 0,1,0,
+]);
+
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+gl.bufferData(gl.ARRAY_BUFFER,cubeData,gl.STATIC_DRAW);
+
+const stride = 6 * 4;
+
+const posLoc = gl.getAttribLocation(prog,"pos");
+gl.enableVertexAttribArray(posLoc);
+gl.vertexAttribPointer(posLoc,3,gl.FLOAT,false,stride,0);
+
+const normLoc = gl.getAttribLocation(prog,"normal");
+gl.enableVertexAttribArray(normLoc);
+gl.vertexAttribPointer(normLoc,3,gl.FLOAT,false,stride,12);
+
+// ---------- math ----------
+function perspective(fov, aspect, near, far){
+  const f = 1/Math.tan(fov/2);
+  return new Float32Array([
+    f/aspect,0,0,0,
+    0,f,0,0,
+    0,0,(far+near)/(near-far),-1,
+    0,0,(2*far*near)/(near-far),0
+  ]);
+}
+
+function viewMatrix(pos,yaw,pitch){
+  const cy=Math.cos(yaw), sy=Math.sin(yaw);
+  const cp=Math.cos(pitch), sp=Math.sin(pitch);
+
+  const xaxis=[cy,0,-sy];
+  const yaxis=[sy*sp,cp,cy*sp];
+  const zaxis=[sy*cp,-sp,cy*cp];
+
+  return new Float32Array([
+    xaxis[0],yaxis[0],zaxis[0],0,
+    xaxis[1],yaxis[1],zaxis[1],0,
+    xaxis[2],yaxis[2],zaxis[2],0,
+    -(xaxis[0]*pos[0]+xaxis[1]*pos[1]+xaxis[2]*pos[2]),
+    -(yaxis[0]*pos[0]+yaxis[1]*pos[1]+yaxis[2]*pos[2]),
+    -(zaxis[0]*pos[0]+zaxis[1]*pos[1]+zaxis[2]*pos[2]),
+    1
+  ]);
+}
+
+// ---------- camera ----------
+let camPos=[0,1.7,6];
+let yaw=0, pitch=0;
+
+document.body.onclick=()=>canvas.requestPointerLock();
+
+document.addEventListener("mousemove",e=>{
+ if(document.pointerLockElement!==canvas) return;
+ yaw -= e.movementX*0.002;
+ pitch -= e.movementY*0.002;
+ pitch=Math.max(-1.55,Math.min(1.55,pitch));
+});
+
+// ---------- movement (FIXED W/S) ----------
+const keys={};
+onkeydown=e=>keys[e.code]=true;
+onkeyup=e=>keys[e.code]=false;
+
+function update(dt){
+ const speed=5*dt;
+
+ const fx=Math.sin(yaw);
+ const fz=Math.cos(yaw);
+ const rx=fz, rz=-fx;
+
+ if(keys["KeyW"]){ camPos[0]-=fx*speed; camPos[2]-=fz*speed; }
+ if(keys["KeyS"]){ camPos[0]+=fx*speed; camPos[2]+=fz*speed; }
+ if(keys["KeyA"]){ camPos[0]-=rx*speed; camPos[2]-=rz*speed; }
+ if(keys["KeyD"]){ camPos[0]+=rx*speed; camPos[2]+=rz*speed; }
+ if(keys["KeyE"]) camPos[1]+=speed;
+ if(keys["KeyQ"]) camPos[1]-=speed;
+}
+
+// ---------- uniforms ----------
+const projLoc=gl.getUniformLocation(prog,"proj");
+const viewLoc=gl.getUniformLocation(prog,"view");
+
+gl.enable(gl.DEPTH_TEST);
+
+// ---------- loop ----------
+let last=0;
+function loop(t){
+ requestAnimationFrame(loop);
+ const dt=(t-last)/1000;
+ last=t;
+
+ update(dt);
+
+ gl.clearColor(0,0,0,1);
+ gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+
+ const proj=perspective(Math.PI/3,canvas.width/canvas.height,0.1,100);
+ gl.uniformMatrix4fv(projLoc,false,proj);
+
+ for(let i=-10;i<10;i+=3){
+   for(let j=-10;j<10;j+=3){
+     const view=viewMatrix([camPos[0]-i,camPos[1],camPos[2]-j],yaw,pitch);
+     gl.uniformMatrix4fv(viewLoc,false,view);
+     gl.drawArrays(gl.TRIANGLES,0,36);
+   }
+ }
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
