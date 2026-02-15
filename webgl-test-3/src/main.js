@@ -13,7 +13,7 @@ if (!inst) throw new Error("Instancing not supported");
 const program = createProgram(gl);
 gl.useProgram(program);
 
-// ---------- attribute locations ----------
+// ---------- attributes ----------
 const posLoc = gl.getAttribLocation(program, "pos");
 const normLoc = gl.getAttribLocation(program, "normal");
 
@@ -37,30 +37,74 @@ setupKeyboard(cam);
 gl.enable(gl.DEPTH_TEST);
 
 // ============================================================
-// INSTANCE MODEL MATRICES
+// INSTANCE DATA (animated)
 // ============================================================
 
-const INSTANCE_COUNT = 5000;
+const INSTANCE_COUNT = 2000;
+
 const modelData = new Float32Array(INSTANCE_COUNT * 16);
 
+// simulation state
+const pos = new Float32Array(INSTANCE_COUNT * 3);
+const vel = new Float32Array(INSTANCE_COUNT * 3);
+const rot = new Float32Array(INSTANCE_COUNT);
+const scale = new Float32Array(INSTANCE_COUNT);
+
+// initialize instances
 for (let i = 0; i < INSTANCE_COUNT; i++) {
-  const x = (Math.random() - 0.5) * 200;
-  const y = (Math.random() - 0.5) * 20;
-  const z = (Math.random() - 0.5) * 200;
+  pos[i*3+0] = (Math.random() - 0.5) * 80;
+  pos[i*3+1] = (Math.random() - 0.5) * 10;
+  pos[i*3+2] = (Math.random() - 0.5) * 80;
 
-  const rot = Math.random() * Math.PI * 2;
-  const scale = 0.4 + Math.random() * 2.2;
+  vel[i*3+0] = (Math.random() - 0.5) * 2;
+  vel[i*3+1] = (Math.random() - 0.5) * 0.5;
+  vel[i*3+2] = (Math.random() - 0.5) * 2;
 
-  const m = modelMatrix(x, y, z, rot, scale);
-  modelData.set(m, i * 16);
+  rot[i] = Math.random() * Math.PI * 2;
+  scale[i] = 0.5 + Math.random() * 2;
 }
 
 const modelVBO = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, modelVBO);
-gl.bufferData(gl.ARRAY_BUFFER, modelData, gl.STATIC_DRAW);
 
 // ============================================================
-// HELPERS
+// UPDATE INSTANCE MATRICES
+// ============================================================
+
+function updateInstances(dt) {
+  const bounds = 60;
+
+  for (let i = 0; i < INSTANCE_COUNT; i++) {
+    // move
+    pos[i*3+0] += vel[i*3+0] * dt;
+    pos[i*3+1] += vel[i*3+1] * dt;
+    pos[i*3+2] += vel[i*3+2] * dt;
+
+    // bounce
+    for (let k = 0; k < 3; k++) {
+      if (pos[i*3+k] > bounds || pos[i*3+k] < -bounds)
+        vel[i*3+k] *= -1;
+    }
+
+    // rotate
+    rot[i] += dt;
+
+    const m = modelMatrix(
+      pos[i*3+0],
+      pos[i*3+1],
+      pos[i*3+2],
+      rot[i],
+      scale[i]
+    );
+
+    modelData.set(m, i * 16);
+  }
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, modelVBO);
+  gl.bufferData(gl.ARRAY_BUFFER, modelData, gl.DYNAMIC_DRAW);
+}
+
+// ============================================================
+// BINDING
 // ============================================================
 
 function bindMesh(mesh) {
@@ -77,7 +121,6 @@ function bindMesh(mesh) {
 
 function bindInstanceMatrices() {
   gl.bindBuffer(gl.ARRAY_BUFFER, modelVBO);
-
   const stride = 64;
 
   gl.enableVertexAttribArray(m0Loc);
@@ -123,6 +166,7 @@ function loop(t) {
   last = t;
 
   cam.update(dt);
+  updateInstances(dt);
 
   gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
