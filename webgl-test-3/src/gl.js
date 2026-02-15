@@ -1,14 +1,16 @@
 export function initGL(id){
- const canvas=document.getElementById(id);
- const gl=canvas.getContext("webgl");
+  const canvas = document.getElementById(id);
+  const gl = canvas.getContext("webgl", { antialias:true });
 
- function resize(){
-   canvas.width=innerWidth;
-   canvas.height=innerHeight;
-   gl.viewport(0,0,canvas.width,canvas.height);
- }
- resize();
- addEventListener("resize",resize);
+  if(!gl) throw new Error("WebGL not supported");
 
- return {gl,canvas};
+  function resize(){
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+    gl.viewport(0,0,canvas.width,canvas.height);
+  }
+  resize();
+  addEventListener("resize", resize);
+
+  return { gl, canvas };
 }
