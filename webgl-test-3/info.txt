@@ -1,10 +1,4 @@
-model matrix instead of hacking camera offsets
-
-proper normal matrix
-
 specular lighting
-
-instancing
 
 texture mapping
 

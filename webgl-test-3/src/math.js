@@ -27,3 +27,16 @@ export function viewMatrix(pos,yaw,pitch){
     1
   ]);
 }
+
+export function modelMatrix(px,py,pz, ry, s){
+  const c=Math.cos(ry);
+  const si=Math.sin(ry);
+
+  return new Float32Array([
+    c*s,0,-si*s,0,
+    0,s,0,0,
+    si*s,0,c*s,0,
+    px,py,pz,1
+  ]);
+}
+
