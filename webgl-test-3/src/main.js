@@ -1,9 +1,10 @@
 import { initGL } from "./gl.js";
 import { Camera, setupMouseLook, setupKeyboard } from "./camera.js";
-import { perspective, modelMatrix } from "./math.js";
+import { perspective } from "./math.js";
 import { createProgram } from "./shader.js";
 import { makeMesh } from "./mesh.js";
 import { createCube } from "./primitives.js";
+import { PhysicsSystem } from "./physics.js";
 
 const { gl, canvas } = initGL("gl");
 
@@ -13,7 +14,6 @@ if (!inst) throw new Error("Instancing not supported");
 const program = createProgram(gl);
 gl.useProgram(program);
 
-// ---------- attributes ----------
 const posLoc = gl.getAttribLocation(program, "pos");
 const normLoc = gl.getAttribLocation(program, "normal");
 
@@ -22,91 +22,24 @@ const m1Loc = gl.getAttribLocation(program, "m1");
 const m2Loc = gl.getAttribLocation(program, "m2");
 const m3Loc = gl.getAttribLocation(program, "m3");
 
-// ---------- uniforms ----------
 const projLoc = gl.getUniformLocation(program, "proj");
 const viewLoc = gl.getUniformLocation(program, "view");
 
-// ---------- mesh ----------
 const cube = makeMesh(gl, createCube());
 
-// ---------- camera ----------
 const cam = new Camera();
 setupMouseLook(canvas, cam);
 setupKeyboard(cam);
 
 gl.enable(gl.DEPTH_TEST);
 
-// ============================================================
-// INSTANCE DATA (animated)
-// ============================================================
-
-const INSTANCE_COUNT = 2000;
-
-const modelData = new Float32Array(INSTANCE_COUNT * 16);
-
-// simulation state
-const pos = new Float32Array(INSTANCE_COUNT * 3);
-const vel = new Float32Array(INSTANCE_COUNT * 3);
-const rot = new Float32Array(INSTANCE_COUNT);
-const scale = new Float32Array(INSTANCE_COUNT);
-
-// initialize instances
-for (let i = 0; i < INSTANCE_COUNT; i++) {
-  pos[i*3+0] = (Math.random() - 0.5) * 80;
-  pos[i*3+1] = (Math.random() - 0.5) * 10;
-  pos[i*3+2] = (Math.random() - 0.5) * 80;
-
-  vel[i*3+0] = (Math.random() - 0.5) * 2;
-  vel[i*3+1] = (Math.random() - 0.5) * 0.5;
-  vel[i*3+2] = (Math.random() - 0.5) * 2;
-
-  rot[i] = Math.random() * Math.PI * 2;
-  scale[i] = 0.5 + Math.random() * 2;
-}
+// ---------------- PHYSICS ----------------
+const INSTANCE_COUNT = 300;
+const physics = new PhysicsSystem(INSTANCE_COUNT);
 
 const modelVBO = gl.createBuffer();
 
-// ============================================================
-// UPDATE INSTANCE MATRICES
-// ============================================================
-
-function updateInstances(dt) {
-  const bounds = 60;
-
-  for (let i = 0; i < INSTANCE_COUNT; i++) {
-    // move
-    pos[i*3+0] += vel[i*3+0] * dt;
-    pos[i*3+1] += vel[i*3+1] * dt;
-    pos[i*3+2] += vel[i*3+2] * dt;
-
-    // bounce
-    for (let k = 0; k < 3; k++) {
-      if (pos[i*3+k] > bounds || pos[i*3+k] < -bounds)
-        vel[i*3+k] *= -1;
-    }
-
-    // rotate
-    rot[i] += dt;
-
-    const m = modelMatrix(
-      pos[i*3+0],
-      pos[i*3+1],
-      pos[i*3+2],
-      rot[i],
-      scale[i]
-    );
-
-    modelData.set(m, i * 16);
-  }
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, modelVBO);
-  gl.bufferData(gl.ARRAY_BUFFER, modelData, gl.DYNAMIC_DRAW);
-}
-
-// ============================================================
-// BINDING
-// ============================================================
-
+// ---------------- HELPERS ----------------
 function bindMesh(mesh) {
   gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
 
@@ -121,6 +54,8 @@ function bindMesh(mesh) {
 
 function bindInstanceMatrices() {
   gl.bindBuffer(gl.ARRAY_BUFFER, modelVBO);
+  gl.bufferData(gl.ARRAY_BUFFER, physics.modelData, gl.DYNAMIC_DRAW);
+
   const stride = 64;
 
   gl.enableVertexAttribArray(m0Loc);
@@ -153,10 +88,7 @@ function drawInstanced(mesh) {
   );
 }
 
-// ============================================================
-// LOOP
-// ============================================================
-
+// ---------------- LOOP ----------------
 let last = 0;
 
 function loop(t) {
@@ -166,7 +98,7 @@ function loop(t) {
   last = t;
 
   cam.update(dt);
-  updateInstances(dt);
+  physics.update(dt);
 
   gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
