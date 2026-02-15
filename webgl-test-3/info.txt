@@ -1,0 +1,17 @@
+model matrix instead of hacking camera offsets
+
+proper normal matrix
+
+specular lighting
+
+instancing
+
+texture mapping
+
+skybox
+
+gravity + collision
+
+
+
+python3 -m http.server 8080
